@@ -27,30 +27,6 @@ def barycentric(triangle, x, y):
     return np.asarray((1.0 - (u[0] + u[1]) / u[2], u[1] / u[2], u[0] / u[2]), dtype=float32)
 
 
-@njit(void(uint32[:], uint32[:, :], int32[:, :]), parallel=True)
-def drawTriangle(screenSize, surface, triangle):
-    boxMin = np.empty(2, dtype=int32)
-    boxMax = np.empty(2, dtype=int32)
-    boxMin[0] = min(triangle[0][0], triangle[1][0], triangle[2][0])
-    if boxMin[0] < 0:
-        boxMin[0] = 0
-    boxMin[1] = min(triangle[0][1], triangle[1][1], triangle[2][1])
-    if boxMin[1] < 0:
-        boxMin[1] = 0
-    boxMax[0] = max(triangle[0][0], triangle[1][0], triangle[2][0])
-    if boxMax[0] > screenSize[0]:
-        boxMax[0] = screenSize[0]
-    boxMax[1] = max(triangle[0][1], triangle[1][1], triangle[2][1])
-    if boxMax[1] > screenSize[1]:
-        boxMax[1] = screenSize[1]
-    for x in prange(boxMin[0], boxMax[0]+1):
-        for y in prange(boxMin[1], boxMax[1] + 1):
-            if surface[x][y] == 16777215:
-                u = barycentric(triangle, x, y)
-                if u[0] >= 0 and u[1] >= 0 and u[2] >= 0:
-                    surface[x][y] = 0
-
-
 @njit(void(uint32[:, :], int32[:], int32[:], uint32, uint32, uint32), parallel=True)
 def drawLine(surface, point0, point1, r, g, b):
     a = np.subtract(point0, point1)
@@ -87,8 +63,58 @@ def drawLine(surface, point0, point1, r, g, b):
     return
 
 
+@njit(void(uint32[:], uint32[:, :], int32[:, :]), parallel=True)
+def drawTriangle(screenSize, surface, triangle):
+    boxMin = np.empty(2, dtype=int32)
+    boxMax = np.empty(2, dtype=int32)
+    boxMin[0] = min(triangle[0][0], triangle[1][0], triangle[2][0])
+    if boxMin[0] < 0:
+        boxMin[0] = 0
+    elif boxMin[0] >= screenSize[0]:
+        return
+    boxMin[1] = min(triangle[0][1], triangle[1][1], triangle[2][1])
+    if boxMin[1] < 0:
+        boxMin[1] = 0
+    elif boxMin[1] >= screenSize[1]:
+        return
+    boxMax[0] = max(triangle[0][0], triangle[1][0], triangle[2][0])
+    if boxMax[0] >= screenSize[0]:
+        boxMax[0] = screenSize[0]-1
+    if boxMax[0] < 0:
+        return
+    boxMax[1] = max(triangle[0][1], triangle[1][1], triangle[2][1])
+    if boxMax[1] >= screenSize[1]:
+        boxMax[1] = screenSize[1]-1
+    if boxMax[1] < 0:
+        return
+    for x in prange(boxMin[0], boxMax[0]+1):
+        for y in prange(boxMin[1], boxMax[1] + 1):
+            if surface[x][y] == 16777215:
+                u = barycentric(triangle, x, y)
+                if u[0] >= 0 and u[1] >= 0 and u[2] >= 0:
+                    surface[x][y] = 0
+
+
+@njit(void(uint32[:], uint32[:, :], int32[:, :], int32, int32), parallel=True)
+def drawTriangles(screenSize, surface, triangles, n, m):
+    for i in range(n-1):
+        for j in range(m-1):
+            triangle1 = np.empty((3, 3), dtype=np.int32)
+            triangle2 = np.empty((3, 3), dtype=np.int32)
+            for k in prange(3):
+                triangle1[0][k] = triangles[k][i * m + j]
+                triangle1[1][k] = triangles[k][(i + 1) * m + j]
+                triangle1[2][k] = triangles[k][i * m + j + 1]
+                triangle2[0][k] = triangles[k][(i + 1) * m + j]
+                triangle2[1][k] = triangles[k][i * m + j + 1]
+                triangle2[2][k] = triangles[k][(i + 1) * m + j + 1]
+            drawTriangle(screenSize, surface, triangle1)
+            drawTriangle(screenSize, surface, triangle2)
+
+
 @njit(void(uint32[:, :], uint32), parallel=True)
 def clearScreen(screen, colorHex):
     for i in prange(screen.shape[0]):
         for j in prange(screen.shape[1]):
             screen[i][j] = colorHex
+
