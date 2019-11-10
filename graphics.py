@@ -64,7 +64,7 @@ def drawLine(surface, point0, point1, r, g, b):
     return
 
 
-#@njit(void(uint32[:], uint32[:, :], int32[:, :]), parallel=True)
+@njit(void(uint32[:], uint32[:, :], int32[:, :]), parallel=True)
 def drawTriangle(screenSize, surface, triangle):
     # if triangle[0][2] < 0.05 or triangle[1][2] < 0.05 or triangle[2][2] < 0.05:
     #     return
@@ -99,24 +99,22 @@ def drawTriangle(screenSize, surface, triangle):
                     surface[x][y] = color
 
 
-#@njit(void(uint32[:], uint32[:, :], float64[:, :], int32, int32), parallel=True)
+@njit(void(uint32[:], uint32[:, :], float64[:, :], int32, int32), parallel=True)
 def drawTriangles(screenSize, surface, triangles, n, m):
     for i in range(n-1):
         for j in range(m-1):
             if triangles[(i + 1) * m + j][3] > 0.01 and triangles[i * m + j + 1][3] > 0.01:
+                triangle = np.empty((3, 3), dtype=np.int32)
+                for k in prange(3):
+                    triangle[1][k] = round(triangles[(i + 1) * m + j][k] / triangles[(i + 1) * m + j][3])
+                    triangle[2][k] = round(triangles[i * m + j + 1][k] / triangles[i * m + j + 1][3])
                 if triangles[i * m + j][3] > 0.01:
-                    triangle = np.empty((3, 3), dtype=np.int32)
-                    for k in prange(3):
+                    for k in range(3):
                         triangle[0][k] = round(triangles[i * m + j][k] / triangles[i * m + j][3])
-                        triangle[1][k] = round(triangles[(i + 1) * m + j][k] / triangles[(i + 1) * m + j][3])
-                        triangle[2][k] = round(triangles[i * m + j + 1][k] / triangles[i * m + j + 1][3])
                     drawTriangle(screenSize, surface, triangle)
                 if triangles[(i + 1) * m + j + 1][3] > 0.01:
-                    triangle = np.empty((3, 3), dtype=np.int32)
-                    for k in prange(3):
-                        triangle[0][k] = round(triangles[(i + 1) * m + j][k] / triangles[(i + 1) * m + j][3])
-                        triangle[1][k] = round(triangles[i * m + j + 1][k] / triangles[i * m + j + 1][3])
-                        triangle[2][k] = round(triangles[(i + 1) * m + j + 1][k] / triangles[(i + 1) * m + j + 1][3])
+                    for k in range(3):
+                        triangle[0][k] = round(triangles[(i + 1) * m + j + 1][k] / triangles[(i + 1) * m + j + 1][3])
                     drawTriangle(screenSize, surface, triangle)
 
 
