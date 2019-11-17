@@ -64,8 +64,8 @@ def drawLine(surface, point0, point1, r, g, b):
     return
 
 
-@njit(void(uint32[:], uint32[:, :], int32[:, :]), parallel=True)
-def drawTriangle(screenSize, surface, triangle):
+@njit(void(uint32[:], uint32[:, :], int32[:, :], uint32), parallel=True)
+def drawTriangle(screenSize, surface, triangle, color):
     # if triangle[0][2] < 0.05 or triangle[1][2] < 0.05 or triangle[2][2] < 0.05:
     #     return
     boxMin = np.empty(2, dtype=np.int32)
@@ -90,13 +90,40 @@ def drawTriangle(screenSize, surface, triangle):
         boxMax[1] = screenSize[1]-1
     if boxMax[1] < 0:
         return
-    color = random() * 1000000
+    #color = random() * 1000000
     for x in prange(boxMin[0], boxMax[0]+1):
         for y in prange(boxMin[1], boxMax[1] + 1):
             if surface[x][y] == 16777215:
                 u = barycentric(triangle, x, y)
                 if u[0] >= 0 and u[1] >= 0 and u[2] >= 0:
                     surface[x][y] = color
+
+
+@njit(void(uint32[:], uint32[:, :], int32[:, :]))
+def drawPoly(screenSize, surface, points):
+    if points.shape[0] < 3:
+        return
+    triangle = np.empty((3, 3), dtype=np.int32)
+    triangle[0] = points[0]
+    color = uint32(random() * 1000000)
+    for i in range(2, points.shape[0]):
+        triangle[1] = points[i - 1]
+        triangle[2] = points[i]
+        drawTriangle(screenSize, surface, triangle, color)
+
+
+@njit(void(uint32[:], uint32[:, :], int32[:, :], int32[:, :]))
+def drawPolys(screenSize, surface, points, faces):
+    for face in range(faces.shape[0]):
+        color = uint32(random() * 1000000)
+        triangle = np.empty((3, 3), dtype=np.int32)
+        triangle[0] = points[faces[face][0]]
+        for point in range(2, faces.shape[1]):
+            if faces[face][point] < 0:
+                break
+            triangle[1] = points[faces[face][point - 1]]
+            triangle[2] = points[faces[face][point]]
+            drawTriangle(screenSize, surface, triangle, color)
 
 
 @njit(void(uint32[:], uint32[:, :], float64[:, :], int32, int32), parallel=True)
@@ -111,11 +138,11 @@ def drawTriangles(screenSize, surface, triangles, n, m):
                 if triangles[i * m + j][3] > 0.01:
                     for k in range(3):
                         triangle[0][k] = round(triangles[i * m + j][k] / triangles[i * m + j][3])
-                    drawTriangle(screenSize, surface, triangle)
+                    drawTriangle(screenSize, surface, triangle, uint32(random() * 1000000))
                 if triangles[(i + 1) * m + j + 1][3] > 0.01:
                     for k in range(3):
                         triangle[0][k] = round(triangles[(i + 1) * m + j + 1][k] / triangles[(i + 1) * m + j + 1][3])
-                    drawTriangle(screenSize, surface, triangle)
+                    drawTriangle(screenSize, surface, triangle, uint32(random() * 1000000))
 
 
 @njit(void(uint32[:, :], uint32), parallel=True)

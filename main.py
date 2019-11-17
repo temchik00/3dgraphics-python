@@ -20,32 +20,56 @@ t = generateMap(10, n, m)
 tmp = to2D(t)
 
 tmp = np.empty((4, 4), dtype=np.float, order='C')
-tmp[0][0] = 100
-tmp[1][0] = 100
+tmp[0][0] = 1
+tmp[1][0] = 1
 tmp[2][0] = 1
 tmp[3][0] = 1
 
-tmp[0][1] = 300
-tmp[1][1] = 100
+tmp[0][1] = 3
+tmp[1][1] = 1
 tmp[2][1] = 1
 tmp[3][1] = 1
 
-tmp[0][2] = 100
-tmp[1][2] = 400
+tmp[0][2] = 1
+tmp[1][2] = 4
 tmp[2][2] = 2
 tmp[3][2] = 1
 
-tmp[0][3] = 300
-tmp[1][3] = 400
+tmp[0][3] = 3
+tmp[1][3] = 4
 tmp[2][3] = 2
 tmp[3][3] = 1
 
-clearScreen(surfArray, 16777215)
-clearBuffer(zBuffer, 50)
-triangleMap = flatten(np.array(pos, order='C'), tmp)
-drawTriangles(screenSize, surfArray, triangleMap, n, m)
-pygame.surfarray.blit_array(screen, surfArray)
-pygame.display.flip()
+points = np.empty((4, 3), dtype=np.int32)
+points[0][0] = 100
+points[0][1] = 0
+points[0][2] = 1
+
+points[1][0] = 100
+points[1][1] = 50
+points[1][2] = 1
+
+points[2][0] = 0
+points[2][1] = 100
+points[2][2] = 1
+
+points[3][0] = 200
+points[3][1] = 100
+points[3][2] = 1
+
+faces = np.empty((3, 3), dtype=np.int32)
+faces[0][0] = 0
+faces[0][1] = 1
+faces[0][2] = 2
+
+faces[1][0] = 0
+faces[1][1] = 1
+faces[1][2] = 3
+
+faces[2][0] = 1
+faces[2][1] = 2
+faces[2][2] = 3
+
 while play:
     clearScreen(surfArray, 16777215)
     for ev in pygame.event.get():
@@ -66,16 +90,18 @@ while play:
     elif keys[pygame.K_e]:
         pos[1] += 0.5
     elif keys[pygame.K_a]:
-        pos[0] -= 0.5
-    elif keys[pygame.K_d]:
         pos[0] += 0.5
+    elif keys[pygame.K_d]:
+        pos[0] -= 0.5
     elif keys[pygame.K_w]:
         pos[2] += 0.3
     elif keys[pygame.K_s]:
         pos[2] -= 0.3
 
-    triangleMap = flatten(pos, tmp)
-    drawTriangles(screenSize, surfArray, triangleMap, n, m)
+    triangleMap = flatten(screenSize, pos, tmp)
+    #drawPoly(screenSize, surfArray, points)
+    #drawTriangles(screenSize, surfArray, triangleMap, n, m)
+    drawPolys(screenSize, surfArray, points, faces)
     pygame.surfarray.blit_array(screen, surfArray)
     pygame.display.flip()
     clock.tick(60)
