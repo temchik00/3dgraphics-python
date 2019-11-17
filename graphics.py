@@ -112,18 +112,22 @@ def drawPoly(screenSize, surface, points):
         drawTriangle(screenSize, surface, triangle, color)
 
 
-@njit(void(uint32[:], uint32[:, :], int32[:, :], int32[:, :]))
+@njit(void(uint32[:], uint32[:, :], float64[:, :], int32[:, :]))
 def drawPolys(screenSize, surface, points, faces):
     for face in range(faces.shape[0]):
         color = uint32(random() * 1000000)
         triangle = np.empty((3, 3), dtype=np.int32)
-        triangle[0] = points[faces[face][0]]
-        for point in range(2, faces.shape[1]):
-            if faces[face][point] < 0:
-                break
-            triangle[1] = points[faces[face][point - 1]]
-            triangle[2] = points[faces[face][point]]
-            drawTriangle(screenSize, surface, triangle, color)
+        if points[faces[face][0]][3] > 0.05:
+            for i in range(3):
+                triangle[0][i] = round(points[faces[face][0]][i] / points[faces[face][0]][3])
+            for point in range(2, faces.shape[1]):
+                if faces[face][point] < 0 or points[faces[face][point - 1]][3] < 0.05 \
+                        or points[faces[face][point]][3] < 0.05:
+                    break
+                for i in range(3):
+                    triangle[1][i] = round(points[faces[face][point - 1]][i] / points[faces[face][point - 1]][3])
+                    triangle[2][i] = round(points[faces[face][point]][i] / points[faces[face][point]][3])
+                drawTriangle(screenSize, surface, triangle, color)
 
 
 @njit(void(uint32[:], uint32[:, :], float64[:, :], int32, int32), parallel=True)

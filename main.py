@@ -40,35 +40,43 @@ tmp[1][3] = 4
 tmp[2][3] = 2
 tmp[3][3] = 1
 
-points = np.empty((4, 3), dtype=np.int32)
+points = np.empty((4, 4), dtype=np.float64)
 points[0][0] = 100
 points[0][1] = 0
-points[0][2] = 1
+points[0][2] = 0
+points[0][3] = 1
 
 points[1][0] = 100
 points[1][1] = 50
-points[1][2] = 1
+points[1][2] = -1
+points[1][3] = 1
 
 points[2][0] = 0
 points[2][1] = 100
-points[2][2] = 1
+points[2][2] = 0
+points[2][3] = 1
 
 points[3][0] = 200
 points[3][1] = 100
-points[3][2] = 1
+points[3][2] = 0
+points[3][3] = 1
 
-faces = np.empty((3, 3), dtype=np.int32)
+faces = np.empty((4, 3), dtype=np.int32)
 faces[0][0] = 0
-faces[0][1] = 1
-faces[0][2] = 2
+faces[0][1] = 2
+faces[0][2] = 3
 
 faces[1][0] = 0
 faces[1][1] = 1
-faces[1][2] = 3
+faces[1][2] = 2
 
-faces[2][0] = 1
-faces[2][1] = 2
+faces[2][0] = 0
+faces[2][1] = 1
 faces[2][2] = 3
+
+faces[3][0] = 1
+faces[3][1] = 2
+faces[3][2] = 3
 
 while play:
     clearScreen(surfArray, 16777215)
@@ -98,10 +106,10 @@ while play:
     elif keys[pygame.K_s]:
         pos[2] -= 0.3
 
-    triangleMap = flatten(screenSize, pos, tmp)
+    triangleMap = flatten(screenSize, pos, points)
     #drawPoly(screenSize, surfArray, points)
     #drawTriangles(screenSize, surfArray, triangleMap, n, m)
-    drawPolys(screenSize, surfArray, points, faces)
+    drawPolys(screenSize, surfArray, triangleMap, faces)
     pygame.surfarray.blit_array(screen, surfArray)
     pygame.display.flip()
     clock.tick(60)
