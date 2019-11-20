@@ -7,7 +7,7 @@ from landscape import *
 drawSize = 600
 play = True
 n, m = 2, 2
-pos = np.array([0.0, 0.0, -2.0], dtype=np.float64)
+pos = np.array([0.0, 0.0, -200.0], dtype=np.float64)
 screenSize = np.array((1920, 1080), dtype=np.uint32)
 
 pygame.init()
@@ -41,23 +41,23 @@ tmp[2][3] = 2
 tmp[3][3] = 1
 
 points = np.empty((4, 4), dtype=np.float64)
-points[0][0] = 100
+points[0][0] = 1
 points[0][1] = 0
 points[0][2] = 0
 points[0][3] = 1
 
-points[1][0] = 100
-points[1][1] = 50
+points[1][0] = 1
+points[1][1] = 0.5
 points[1][2] = -1
 points[1][3] = 1
 
 points[2][0] = 0
-points[2][1] = 100
+points[2][1] = 1
 points[2][2] = 0
 points[2][3] = 1
 
-points[3][0] = 200
-points[3][1] = 100
+points[3][0] = 2
+points[3][1] = 1
 points[3][2] = 0
 points[3][3] = 1
 
@@ -94,14 +94,14 @@ while play:
 
     keys = pygame.key.get_pressed()
     if keys[pygame.K_q]:
-        pos[1] -= 0.5
+        pos[1] -= 2
     elif keys[pygame.K_e]:
-        pos[1] += 0.5
-    elif keys[pygame.K_a]:
-        pos[0] += 0.5
+        pos[1] += 2
+    if keys[pygame.K_a]:
+        pos[0] += 2
     elif keys[pygame.K_d]:
-        pos[0] -= 0.5
-    elif keys[pygame.K_w]:
+        pos[0] -= 2
+    if keys[pygame.K_w]:
         pos[2] += 0.3
     elif keys[pygame.K_s]:
         pos[2] -= 0.3
