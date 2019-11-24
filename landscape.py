@@ -1,6 +1,8 @@
 import numpy as np
 from math import sin
 from mathematics import *
+
+
 def generateMap(scale, n, m):
     Map = np.empty((n, m, 4), dtype=np.float, order='C')
     for x in range(n):
@@ -21,7 +23,3 @@ def to2D(Map):
             for k in range(4):
                 ans[k][i*y+j] = Map[i][j][k]
     return ans
-
-
-
-
