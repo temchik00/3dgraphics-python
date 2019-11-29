@@ -2,17 +2,22 @@ import numpy as np
 import pygame
 from graphics import *
 from landscape import *
+from mathematics import initScaleMatrix, transform, initProjectMatrix, initShiftMatrix
 
 
 play = True
 n, m = 2, 2
-
-cameraPos = np.array([0.0, 0.0, -20.0], dtype=np.float64)
+depth = 256
+cameraPos = np.array([0.0, 0.0, -4.0], dtype=np.float64)
 screenSize = np.array((1920, 1080), dtype=np.uint64)
 surfArray = np.full(screenSize, 16777215, dtype=np.uint64)
-zBuffer = np.full(screenSize,16777215,  dtype=np.float64)
+zBuffer = np.full(screenSize, 16777215,  dtype=np.float64)
+
 
 pygame.init()
+initScaleMatrix(screenSize, depth)
+initProjectMatrix(screenSize, 0.1, 10, 80)
+initShiftMatrix(screenSize)
 screen = pygame.display.set_mode(screenSize, pygame.DOUBLEBUF | pygame.FULLSCREEN)
 screen.unlock()
 clock = pygame.time.Clock()
@@ -60,7 +65,7 @@ faces[3][2] = 3
 
 while play:
     clearScreen(surfArray, 16777215)
-    clearBuffer(zBuffer, 255)
+    clearBuffer(zBuffer, depth)
     for ev in pygame.event.get():
         if ev.type == pygame.QUIT:
             play = False
@@ -76,20 +81,24 @@ while play:
     # moving camera
     keys = pygame.key.get_pressed()
     if keys[pygame.K_q]:
-        cameraPos[1] += 0.2
-    elif keys[pygame.K_e]:
         cameraPos[1] -= 0.2
+    elif keys[pygame.K_e]:
+        cameraPos[1] += 0.2
     if keys[pygame.K_a]:
-        cameraPos[0] += 0.2
-    elif keys[pygame.K_d]:
         cameraPos[0] -= 0.2
+    elif keys[pygame.K_d]:
+        cameraPos[0] += 0.2
     if keys[pygame.K_w]:
         cameraPos[2] += 0.3
     elif keys[pygame.K_s]:
         cameraPos[2] -= 0.3
 
-    triangleMap = flatten(screenSize, cameraPos, points, 100.0)
+    # Get points to draw
+    triangleMap = transform(cameraPos, points)
+
+    # Draw everything
     drawPolys(screenSize, surfArray, triangleMap, faces, zBuffer)
+
     pygame.surfarray.blit_array(screen, surfArray)
     pygame.display.flip()
     clock.tick(60)

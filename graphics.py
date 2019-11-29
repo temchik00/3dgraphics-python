@@ -116,17 +116,15 @@ def drawPolys(screenSize, surface, points, faces, zbuffer):
     for face in range(faces.shape[0]):
         color = uint64(random() * 1000000)
         triangle = np.empty((3, 3), dtype=np.int64)
-        if points[faces[face][0]][3] > 0.05:
+        for i in range(3):
+            triangle[0][i] = points[faces[face][0]][i]
+        for point in range(2, faces.shape[1]):
+            if faces[face][point] < 0:
+                break
             for i in range(3):
-                triangle[0][i] = round(points[faces[face][0]][i] / points[faces[face][0]][3])
-            for point in range(2, faces.shape[1]):
-                if faces[face][point] < 0 or points[faces[face][point - 1]][3] < 0.05 \
-                        or points[faces[face][point]][3] < 0.05:
-                    break
-                for i in range(3):
-                    triangle[1][i] = round(points[faces[face][point - 1]][i] / points[faces[face][point - 1]][3])
-                    triangle[2][i] = round(points[faces[face][point]][i] / points[faces[face][point]][3])
-                drawTriangle(screenSize, surface, triangle, color, zbuffer)
+                triangle[1][i] = points[faces[face][point - 1]][i]
+                triangle[2][i] = points[faces[face][point]][i]
+            drawTriangle(screenSize, surface, triangle, color, zbuffer)
 
 
 # @njit(void(uint64[:], uint64[:, :], float64[:, :], int64, int64, float64[:, :]), parallel=True)
@@ -155,7 +153,7 @@ def clearScreen(screen, colorHex):
             screen[i][j] = colorHex
 
 
-@njit(void(float64[:, :], int64), parallel=True)
+@njit(void(float64[:, :], float64), parallel=True)
 def clearBuffer(zBuffer, clipDist):
     for i in prange(zBuffer.shape[0]):
         for j in prange(zBuffer.shape[1]):
