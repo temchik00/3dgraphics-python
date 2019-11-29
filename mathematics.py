@@ -31,14 +31,31 @@ def initScaleMatrix(screenSize, depth):
     scaleMatrix[2][2] = depth - 1
 
 
-def transform(cameraPos, objectDots):
-    matrix = np.eye(4, dtype=np.float64)
-
+def transform(cameraPos, objectDots, angle):
     # change position
+    matrix = np.eye(4, dtype=np.float64)
     matrix[0][3] = -1 * cameraPos[0]
     matrix[1][3] = -1 * cameraPos[1]
     matrix[2][3] = -1 * cameraPos[2]
     res = np.dot(matrix, objectDots)
+
+    ## rotation ##
+    # up/down
+    rotateX = np.eye(4, dtype=np.float64)
+    rotateX[1][1] = np.cos(angle[1])
+    rotateX[2][2] = np.cos(angle[1])
+    rotateX[1][2] = -1 * np.sin(angle[1])
+    rotateX[2][1] = np.sin(angle[1])
+    res = np.dot(rotateX, res)
+
+    # left/right
+    rotateY = np.eye(4, dtype=np.float64)
+    rotateY[0][0] = np.cos(angle[0])
+    rotateY[2][2] = np.cos(angle[0])
+    rotateY[0][2] = -1 * np.sin(angle[0])
+    rotateY[2][0] = np.sin(angle[0])
+    res = np.dot(rotateY, res)
+
 
     # projection
     res = np.dot(projectMatrix, res)

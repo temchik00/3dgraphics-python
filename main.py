@@ -1,13 +1,14 @@
 import numpy as np
 import pygame
 from graphics import *
-from landscape import *
+#from landscape import *
 from mathematics import initScaleMatrix, transform, initProjectMatrix, initShiftMatrix
 
 
 play = True
 n, m = 2, 2
 depth = 256
+ang = np.full(2, 0, dtype=np.float64)
 cameraPos = np.array([0.0, 0.0, -4.0], dtype=np.float64)
 screenSize = np.array((1920, 1080), dtype=np.uint64)
 surfArray = np.full(screenSize, 16777215, dtype=np.uint64)
@@ -92,9 +93,17 @@ while play:
         cameraPos[2] += 0.3
     elif keys[pygame.K_s]:
         cameraPos[2] -= 0.3
+    if keys[pygame.K_LEFT]:
+        ang[0] -= 0.05
+    elif keys[pygame.K_RIGHT]:
+        ang[0] += 0.05
+    if keys[pygame.K_UP]:
+        ang[1] -= 0.05
+    elif keys[pygame.K_DOWN]:
+        ang[1] += 0.05
 
     # Get points to draw
-    triangleMap = transform(cameraPos, points)
+    triangleMap = transform(cameraPos, points, ang)
 
     # Draw everything
     drawPolys(screenSize, surfArray, triangleMap, faces, zBuffer)
