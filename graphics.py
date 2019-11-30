@@ -111,8 +111,8 @@ def drawTriangle(screenSize, surface, triangle, color, zbuffer):
 #         drawTriangle(screenSize, surface, triangle, color, zbuffer)
 
 
-@njit(void(uint64[:], uint64[:, :], float64[:, :], int64[:, :], float64[:, :]))
-def drawPolys(screenSize, surface, points, faces, zbuffer):
+@njit(void(uint64[:], uint64[:, :], float64[:, :], int64[:, :], float64[:, :], float64))
+def drawPolys(screenSize, surface, points, faces, zbuffer, depth):
     for face in range(faces.shape[0]):
         color = uint64(random() * 1000000)
         triangle = np.empty((3, 3), dtype=np.int64)
@@ -124,7 +124,9 @@ def drawPolys(screenSize, surface, points, faces, zbuffer):
             for i in range(3):
                 triangle[1][i] = points[faces[face][point - 1]][i]
                 triangle[2][i] = points[faces[face][point]][i]
-            drawTriangle(screenSize, surface, triangle, color, zbuffer)
+            if triangle[0][2] >= 0 and triangle[1][2] >= 0 and triangle[2][2] >= 0 and triangle[0][2] <= depth \
+                    and triangle[1][2] <= depth and triangle[2][2] <= depth:
+                drawTriangle(screenSize, surface, triangle, color, zbuffer)
 
 
 # @njit(void(uint64[:], uint64[:, :], float64[:, :], int64, int64, float64[:, :]), parallel=True)

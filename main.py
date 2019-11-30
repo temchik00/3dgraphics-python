@@ -97,16 +97,16 @@ while play:
         ang[0] -= 0.05
     elif keys[pygame.K_RIGHT]:
         ang[0] += 0.05
-    if keys[pygame.K_UP]:
+    if keys[pygame.K_UP] and ang[1] > -1.39:
         ang[1] -= 0.05
-    elif keys[pygame.K_DOWN]:
+    elif keys[pygame.K_DOWN] and ang[1] < 1.39:
         ang[1] += 0.05
 
     # Get points to draw
     triangleMap = transform(cameraPos, points, ang)
 
     # Draw everything
-    drawPolys(screenSize, surfArray, triangleMap, faces, zBuffer)
+    drawPolys(screenSize, surfArray, triangleMap, faces, zBuffer, depth)
 
     pygame.surfarray.blit_array(screen, surfArray)
     pygame.display.flip()

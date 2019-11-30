@@ -40,6 +40,14 @@ def transform(cameraPos, objectDots, angle):
     res = np.dot(matrix, objectDots)
 
     ## rotation ##
+    # left/right
+    rotateY = np.eye(4, dtype=np.float64)
+    rotateY[0][0] = np.cos(angle[0])
+    rotateY[2][2] = np.cos(angle[0])
+    rotateY[0][2] = -1 * np.sin(angle[0])
+    rotateY[2][0] = np.sin(angle[0])
+    res = np.dot(rotateY, res)
+
     # up/down
     rotateX = np.eye(4, dtype=np.float64)
     rotateX[1][1] = np.cos(angle[1])
@@ -48,13 +56,6 @@ def transform(cameraPos, objectDots, angle):
     rotateX[2][1] = np.sin(angle[1])
     res = np.dot(rotateX, res)
 
-    # left/right
-    rotateY = np.eye(4, dtype=np.float64)
-    rotateY[0][0] = np.cos(angle[0])
-    rotateY[2][2] = np.cos(angle[0])
-    rotateY[0][2] = -1 * np.sin(angle[0])
-    rotateY[2][0] = np.sin(angle[0])
-    res = np.dot(rotateY, res)
 
 
     # projection
