@@ -5,6 +5,7 @@ import numpy as np
 scaleMatrix = np.eye(4, dtype=np.float64)
 projectMatrix = np.eye(4, dtype=np.float64)
 shift = np.eye(4, dtype=np.float64)
+matrix = np.eye(4, dtype=np.float64)
 
 
 def initShiftMatrix(screenSize):
@@ -33,7 +34,6 @@ def initScaleMatrix(screenSize, depth):
 
 def transform(cameraPos, objectDots, angle):
     # change position
-    matrix = np.eye(4, dtype=np.float64)
     matrix[0][3] = -1 * cameraPos[0]
     matrix[1][3] = -1 * cameraPos[1]
     matrix[2][3] = -1 * cameraPos[2]

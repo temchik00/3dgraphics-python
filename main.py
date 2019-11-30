@@ -13,6 +13,9 @@ cameraPos = np.array([0.0, 0.0, -4.0], dtype=np.float64)
 screenSize = np.array((1920, 1080), dtype=np.uint64)
 surfArray = np.full(screenSize, 16777215, dtype=np.uint64)
 zBuffer = np.full(screenSize, 16777215,  dtype=np.float64)
+rotateX = np.eye(3, dtype=np.float64)
+rotateY = np.eye(3, dtype=np.float64)
+shift = np.empty(3)
 
 
 pygame.init()
@@ -79,20 +82,8 @@ while play:
     if not play:
         break
 
-    # moving camera
     keys = pygame.key.get_pressed()
-    if keys[pygame.K_q]:
-        cameraPos[1] -= 0.2
-    elif keys[pygame.K_e]:
-        cameraPos[1] += 0.2
-    if keys[pygame.K_a]:
-        cameraPos[0] -= 0.2
-    elif keys[pygame.K_d]:
-        cameraPos[0] += 0.2
-    if keys[pygame.K_w]:
-        cameraPos[2] += 0.3
-    elif keys[pygame.K_s]:
-        cameraPos[2] -= 0.3
+    # Changing camera angles
     if keys[pygame.K_LEFT]:
         ang[0] -= 0.05
     elif keys[pygame.K_RIGHT]:
@@ -101,6 +92,42 @@ while play:
         ang[1] -= 0.05
     elif keys[pygame.K_DOWN] and ang[1] < 1.39:
         ang[1] += 0.05
+
+    # Changing camera position
+    if keys[pygame.K_q]:
+        shift[1] = -0.2
+    elif keys[pygame.K_e]:
+        shift[1] = 0.2
+    else:
+        shift[1] = 0
+    if keys[pygame.K_a]:
+        shift[0] = -0.2
+    elif keys[pygame.K_d]:
+        shift[0] = 0.2
+    else:
+        shift[0] = 0
+    if keys[pygame.K_w]:
+        shift[2] = 0.3
+    elif keys[pygame.K_s]:
+        shift[2] = -0.3
+    else:
+        shift[2] = 0
+
+    # Rotating shift
+    rotateX[1][1] = np.cos(ang[1])
+    rotateX[2][2] = np.cos(ang[1])
+    rotateX[1][2] = np.sin(ang[1])
+    rotateX[2][1] = -1 * np.sin(ang[1])
+    shift = np.dot(rotateX, shift)
+
+    rotateY[0][0] = np.cos(ang[0])
+    rotateY[2][2] = np.cos(ang[0])
+    rotateY[0][2] = np.sin(ang[0])
+    rotateY[2][0] = -1 * np.sin(ang[0])
+    shift = np.dot(rotateY, shift)
+
+    # Applying shift
+    cameraPos = np.add(cameraPos, shift)
 
     # Get points to draw
     triangleMap = transform(cameraPos, points, ang)
