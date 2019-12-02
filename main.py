@@ -11,8 +11,8 @@ depth = 256
 ang = np.full(2, 0, dtype=np.float64)
 cameraPos = np.array([0.0, 0.0, -4.0], dtype=np.float64)
 screenSize = np.array((1920, 1080), dtype=np.uint64)
-surfArray = np.full(screenSize, 16777215, dtype=np.uint64)
-zBuffer = np.full(screenSize, 16777215,  dtype=np.float64)
+surfArray = np.full(screenSize, 16777215, dtype=np.uint32)
+zBuffer = np.full(screenSize, 16777215,  dtype=np.float32)
 rotateX = np.eye(3, dtype=np.float64)
 rotateY = np.eye(3, dtype=np.float64)
 shift = np.empty(3)
@@ -27,7 +27,7 @@ screen.unlock()
 clock = pygame.time.Clock()
 
 # test object's points(pyramid)
-points = np.empty((4, 4), dtype=np.float64, order='C')
+points = np.empty((4, 4), dtype=np.float32, order='C')
 points[0][0] = 1
 points[1][0] = 0
 points[2][0] = 2
@@ -133,7 +133,7 @@ while play:
     triangleMap = transform(cameraPos, points, ang)
 
     # Draw everything
-    drawPolys(screenSize, surfArray, triangleMap, faces, zBuffer, depth)
+    drawPolysGPU(screenSize, surfArray, triangleMap, faces, zBuffer, depth)
 
     pygame.surfarray.blit_array(screen, surfArray)
     pygame.display.flip()

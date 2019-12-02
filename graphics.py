@@ -1,6 +1,11 @@
-from numba import jit, uint64, void, int64, njit, prange, float64
+from numba import jit, uint64, void, int64, njit, prange, float64, float32, int32, uint32
 import numpy as np
 from random import random
+import pycuda.driver as cuda
+import pycuda.autoinit
+from pycuda.compiler import SourceModule
+
+bdim = (8, 8, 1)
 
 
 @jit(uint64(uint64, uint64, uint64), nopython=True)
@@ -18,14 +23,14 @@ def rgbToHexDecimal(r, g, b):
     return res
 
 
-@jit(float64[:](int64[:, :], int64, int64), nopython=True)
+@jit(float32[:](int32[:, :], int32, int32), nopython=True)
 def barycentric(triangle, x, y):
     u = np.cross(
         np.asarray((triangle[2][0] - triangle[0][0], triangle[1][0] - triangle[0][0], triangle[0][0] - x)),
         np.asarray((triangle[2][1] - triangle[0][1], triangle[1][1] - triangle[0][1], triangle[0][1] - y)))
-    if abs(u[2]) < 1:
-        return np.asarray((-1, 1, 1), dtype=float64)
-    return np.asarray((1.0 - (u[0] + u[1]) / u[2], u[1] / u[2], u[0] / u[2]), dtype=float64)
+    if u[2] == 0:
+        return np.asarray((-1, 1, 1), dtype=float32)
+    return np.asarray((1.0 - (u[0] + u[1]) / u[2], u[1] / u[2], u[0] / u[2]), dtype=float32)
 
 
 # @njit(void(uint64[:, :], int64[:], int64[:], uint64, uint64, uint64), parallel=True)
@@ -63,8 +68,69 @@ def barycentric(triangle, x, y):
 #                     surface[int(x)][y] = rgbToHexDecimal(r, g, b)
 #     return
 
+mod = SourceModule("""
+__global__ void triangleInBox(unsigned int *surface, int *triangle, unsigned int color, float *zbuffer, int xStart, int yStart, int xEnd, int yEnd, int height, float cross2)
+{
+    int idx = threadIdx.x + blockDim.x * blockIdx.x;
+    int idy = threadIdx.y + blockDim.y * blockIdx.y;
+    if ( ( idx < xEnd ) && ( idy < yEnd ) && ( idx >= xStart ) && ( idy >= yStart ) ) {
+        float cross0 = (triangle[3] - triangle[0]) * (triangle[1] - idy) - (triangle[4] - triangle[1]) * (triangle[0] - idx);
+        float cross1 = -1.0 * ((triangle[6] - triangle[0]) * (triangle[1] - idy) - (triangle[7] - triangle[1]) * (triangle[0] - idx));
+        int id = idx * height + idy;    
+        float u0 = 1.0 - (cross0 + cross1) / cross2;
+        float u1 = cross1 / cross2;
+        float u2 = cross0 / cross2;
+        if(u0 >= 0.0 && u1 >= 0.0 && u2 >= 0.0) 
+        {
+            float z = triangle[2] * u0 + triangle[5] * u1 + triangle[8] * u2;
+            if(z < zbuffer[id])
+            {
+                zbuffer[id] = z;
+                surface[id] = color;   
+            }
+        }
+    }
+}
+""")
+drawTriangleInBox = mod.get_function("triangleInBox")
 
-@njit(void(uint64[:], uint64[:, :], int64[:, :], uint64, float64[:, :]), parallel=True)
+
+def drawTriangleGPU(screenSize, surface, triangle, color, zbuffer):
+    crossZ = np.float32((triangle[2][0] - triangle[0][0]) * (triangle[1][1] - triangle[0][1])
+                        - (triangle[1][0] - triangle[0][0]) * (triangle[2][1] - triangle[0][1]))
+    if crossZ != 0:
+        boxMin = np.empty(2, dtype=np.int32)
+        boxMax = np.empty(2, dtype=np.int32)
+        boxMin[0] = min(triangle[0][0], triangle[1][0], triangle[2][0])
+        if boxMin[0] < 0:
+            boxMin[0] = 0
+        elif boxMin[0] >= screenSize[0]:
+            return
+        boxMin[1] = min(triangle[0][1], triangle[1][1], triangle[2][1])
+        if boxMin[1] < 0:
+            boxMin[1] = 0
+        elif boxMin[1] >= screenSize[1]:
+            return
+        boxMax[0] = max(triangle[0][0], triangle[1][0], triangle[2][0])
+        if boxMax[0] >= screenSize[0]:
+            boxMax[0] = screenSize[0] - 1
+        if boxMax[0] < 0:
+            return
+        boxMax[1] = max(triangle[0][1], triangle[1][1], triangle[2][1])
+        if boxMax[1] >= screenSize[1]:
+            boxMax[1] = screenSize[1] - 1
+        if boxMax[1] < 0:
+            return
+        dx, mx = divmod(1920, bdim[0])
+        dy, my = divmod(1080, bdim[1])
+
+        gdim = ((dx + (mx > 0))*bdim[0], (dy + (my > 0))*bdim[1])
+        drawTriangleInBox(cuda.InOut(surface), cuda.In(triangle), np.uint32(color), cuda.InOut(zbuffer),
+                          np.int32(boxMin[0]), np.int32(boxMin[1]), np.int32(boxMax[0]), np.int32(boxMax[1]),
+                          np.int32(screenSize[1]), crossZ, block=bdim, grid=gdim)
+
+
+@njit(void(uint64[:], uint32[:, :], int32[:, :], uint32, float32[:, :]), parallel=True)
 def drawTriangle(screenSize, surface, triangle, color, zbuffer):
     boxMin = np.empty(2, dtype=np.int64)
     boxMax = np.empty(2, dtype=np.int64)
@@ -111,11 +177,11 @@ def drawTriangle(screenSize, surface, triangle, color, zbuffer):
 #         drawTriangle(screenSize, surface, triangle, color, zbuffer)
 
 
-@njit(void(uint64[:], uint64[:, :], float64[:, :], int64[:, :], float64[:, :], float64))
+@njit(void(uint64[:], uint32[:, :], float32[:, :], int64[:, :], float32[:, :], float64))
 def drawPolys(screenSize, surface, points, faces, zbuffer, depth):
     for face in range(faces.shape[0]):
-        color = uint64(random() * 1000000)
-        triangle = np.empty((3, 3), dtype=np.int64)
+        color = uint32(random() * 1000000)
+        triangle = np.empty((3, 3), dtype=np.int32)
         for i in range(3):
             triangle[0][i] = points[faces[face][0]][i]
         for point in range(2, faces.shape[1]):
@@ -128,6 +194,22 @@ def drawPolys(screenSize, surface, points, faces, zbuffer, depth):
                     and triangle[1][2] <= depth and triangle[2][2] <= depth:
                 drawTriangle(screenSize, surface, triangle, color, zbuffer)
 
+
+def drawPolysGPU(screenSize, surface, points, faces, zbuffer, depth):
+    for face in range(faces.shape[0]):
+        color = uint32(random() * 1000000)
+        triangle = np.empty((3, 3), dtype=np.int32)
+        for i in range(3):
+            triangle[0][i] = points[faces[face][0]][i]
+        for point in range(2, faces.shape[1]):
+            if faces[face][point] < 0:
+                break
+            for i in range(3):
+                triangle[1][i] = points[faces[face][point - 1]][i]
+                triangle[2][i] = points[faces[face][point]][i]
+            if triangle[0][2] >= 0 and triangle[1][2] >= 0 and triangle[2][2] >= 0 and triangle[0][2] <= depth \
+                    and triangle[1][2] <= depth and triangle[2][2] <= depth:
+                drawTriangleGPU(screenSize, surface, triangle, color, zbuffer)
 
 # @njit(void(uint64[:], uint64[:, :], float64[:, :], int64, int64, float64[:, :]), parallel=True)
 # def drawTriangles(screenSize, surface, triangles, n, m, zbuffer):
@@ -148,14 +230,14 @@ def drawPolys(screenSize, surface, points, faces, zbuffer, depth):
 #                     drawTriangle(screenSize, surface, triangle, uint32(random() * 1000000), zbuffer)
 
 
-@njit(void(uint64[:, :], uint64), parallel=True)
+@njit(void(uint32[:, :], uint32), parallel=True)
 def clearScreen(screen, colorHex):
     for i in prange(screen.shape[0]):
         for j in prange(screen.shape[1]):
             screen[i][j] = colorHex
 
 
-@njit(void(float64[:, :], float64), parallel=True)
+@njit(void(float32[:, :], float32), parallel=True)
 def clearBuffer(zBuffer, clipDist):
     for i in prange(zBuffer.shape[0]):
         for j in prange(zBuffer.shape[1]):

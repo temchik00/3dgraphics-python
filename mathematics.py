@@ -56,8 +56,6 @@ def transform(cameraPos, objectDots, angle):
     rotateX[2][1] = np.sin(angle[1])
     res = np.dot(rotateX, res)
 
-
-
     # projection
     res = np.dot(projectMatrix, res)
 
@@ -75,9 +73,9 @@ def transform(cameraPos, objectDots, angle):
 def shiftImage(objectDots):
     for point in prange(objectDots.shape[1]):
         for coord in range(3):
-            if objectDots[3][point] > 0:
+            if objectDots[3][point] > 0.05:
                 objectDots[coord][point] = round(objectDots[coord][point] / objectDots[3][point])
             else:
-                objectDots[coord][point] = 0
+                objectDots[coord][point] = -10000
         objectDots[3][point] = 1
-    return np.dot(shift, objectDots)
+    return np.dot(shift, objectDots).astype(np.float32)
