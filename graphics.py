@@ -71,9 +71,9 @@ def barycentric(triangle, x, y):
 mod = SourceModule("""
 __global__ void triangleInBox(unsigned int *surface, int *triangle, unsigned int color, float *zbuffer, int xStart, int yStart, int xEnd, int yEnd, int height, float cross2)
 {
-    int idx = threadIdx.x + blockDim.x * blockIdx.x;
-    int idy = threadIdx.y + blockDim.y * blockIdx.y;
-    if ( ( idx < xEnd ) && ( idy < yEnd ) && ( idx >= xStart ) && ( idy >= yStart ) ) {
+    int idx = threadIdx.x + blockDim.x * blockIdx.x + xStart;
+    int idy = threadIdx.y + blockDim.y * blockIdx.y + yStart;
+    if (idx < xEnd && idy < yEnd) {
         float cross0 = (triangle[3] - triangle[0]) * (triangle[1] - idy) - (triangle[4] - triangle[1]) * (triangle[0] - idx);
         float cross1 = -1.0 * ((triangle[6] - triangle[0]) * (triangle[1] - idy) - (triangle[7] - triangle[1]) * (triangle[0] - idx));
         int id = idx * height + idy;    
@@ -121,10 +121,9 @@ def drawTriangleGPU(screenSize, surface, triangle, color, zbuffer):
             boxMax[1] = screenSize[1] - 1
         if boxMax[1] < 0:
             return
-        dx, mx = divmod(1920, bdim[0])
-        dy, my = divmod(1080, bdim[1])
-
-        gdim = ((dx + (mx > 0))*bdim[0], (dy + (my > 0))*bdim[1])
+        size = boxMax - boxMin
+        gdim = (int(size[0] // bdim[0] + (size[0] % bdim[0] > 0)),
+                int(size[1] // bdim[1] + (size[1] % bdim[1] > 1)))
         drawTriangleInBox(cuda.InOut(surface), cuda.In(triangle), np.uint32(color), cuda.InOut(zbuffer),
                           np.int32(boxMin[0]), np.int32(boxMin[1]), np.int32(boxMax[0]), np.int32(boxMax[1]),
                           np.int32(screenSize[1]), crossZ, block=bdim, grid=gdim)
