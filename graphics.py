@@ -190,7 +190,7 @@ def drawPolys(screenSize, surface, points, faces, zbuffer, depth):
             for i in range(3):
                 triangle[1][i] = points[faces[face][point - 1]][i]
                 triangle[2][i] = points[faces[face][point]][i]
-            if triangle[0][2] >= 0 and triangle[1][2] >= 0 and triangle[2][2] >= 0 and triangle[0][2] <= depth \
+            if triangle[0][2] > 0 and triangle[1][2] > 0 and triangle[2][2] > 0 and triangle[0][2] <= depth \
                     and triangle[1][2] <= depth and triangle[2][2] <= depth:
                 drawTriangle(screenSize, surface, triangle, color, zbuffer)
 
@@ -207,7 +207,7 @@ def drawPolysGPU(screenSize, surface, points, faces, zbuffer, depth):
             for i in range(3):
                 triangle[1][i] = points[faces[face][point - 1]][i]
                 triangle[2][i] = points[faces[face][point]][i]
-            if triangle[0][2] >= 0 and triangle[1][2] >= 0 and triangle[2][2] >= 0 and triangle[0][2] <= depth \
+            if triangle[0][2] > 0 and triangle[1][2] > 0 and triangle[2][2] > 0 and triangle[0][2] <= depth \
                     and triangle[1][2] <= depth and triangle[2][2] <= depth:
                 drawTriangleGPU(screenSize, surface, triangle, color, zbuffer)
 
