@@ -13,9 +13,7 @@ cameraPos = np.array([0.0, 0.0, -4.0], dtype=np.float64)
 screenSize = np.array((1920, 1080), dtype=np.uint64)
 surfArray = np.full(screenSize, 16777215, dtype=np.uint32)
 zBuffer = np.full(screenSize, 16777215,  dtype=np.float32)
-rotateX = np.eye(3, dtype=np.float64)
-rotateY = np.eye(3, dtype=np.float64)
-shift = np.empty(3)
+shift = np.empty(3, dtype=np.float64)
 
 
 pygame.init()
@@ -67,6 +65,26 @@ faces[3][1] = 2
 faces[3][2] = 3
 
 
+@njit(float64[:](float64[:], float64[:], float64[:]))
+def applyMovement(camPos, camAng, Shift):
+    rotateX = np.eye(3, dtype=np.float64)
+    rotateY = np.eye(3, dtype=np.float64)
+
+    rotateX[1][1] = np.cos(camAng[1])
+    rotateX[2][2] = np.cos(camAng[1])
+    rotateX[1][2] = np.sin(camAng[1])
+    rotateX[2][1] = -1 * np.sin(camAng[1])
+    Shift = np.dot(rotateX, Shift)
+
+    rotateY[0][0] = np.cos(camAng[0])
+    rotateY[2][2] = np.cos(camAng[0])
+    rotateY[0][2] = np.sin(camAng[0])
+    rotateY[2][0] = -1 * np.sin(camAng[0])
+    Shift = np.dot(rotateY, Shift)
+
+    # Applying shift
+    return np.add(camPos, Shift)
+
 while play:
     clearScreen(surfArray, 16777215)
     clearBuffer(zBuffer, depth)
@@ -113,21 +131,8 @@ while play:
     else:
         shift[2] = 0
 
-    # Rotating shift
-    rotateX[1][1] = np.cos(ang[1])
-    rotateX[2][2] = np.cos(ang[1])
-    rotateX[1][2] = np.sin(ang[1])
-    rotateX[2][1] = -1 * np.sin(ang[1])
-    shift = np.dot(rotateX, shift)
-
-    rotateY[0][0] = np.cos(ang[0])
-    rotateY[2][2] = np.cos(ang[0])
-    rotateY[0][2] = np.sin(ang[0])
-    rotateY[2][0] = -1 * np.sin(ang[0])
-    shift = np.dot(rotateY, shift)
-
     # Applying shift
-    cameraPos = np.add(cameraPos, shift)
+    cameraPos = applyMovement(cameraPos, ang, shift)
 
     # Get points to draw
     triangleMap = transform(cameraPos, points, ang)
