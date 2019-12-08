@@ -123,7 +123,7 @@ def drawTriangleGPU(screenSize, surface, triangle, color, zbuffer):
             return
         size = boxMax - boxMin
         gdim = (int(size[0] // bdim[0] + (size[0] % bdim[0] > 0)),
-                int(size[1] // bdim[1] + (size[1] % bdim[1] > 1)))
+                int(size[1] // bdim[1] + (size[1] % bdim[1] > 0)))
         drawTriangleInBox(cuda.InOut(surface), cuda.In(triangle), np.uint32(color), cuda.InOut(zbuffer),
                           np.int32(boxMin[0]), np.int32(boxMin[1]), np.int32(boxMax[0]), np.int32(boxMax[1]),
                           np.int32(screenSize[1]), crossZ, block=bdim, grid=gdim)
@@ -179,36 +179,36 @@ def drawTriangle(screenSize, surface, triangle, color, zbuffer):
 @njit(void(uint64[:], uint32[:, :], float32[:, :], int64[:, :], float32[:, :], float64))
 def drawPolys(screenSize, surface, points, faces, zbuffer, depth):
     for face in range(faces.shape[0]):
-        color = uint32(random() * 1000000)
-        triangle = np.empty((3, 3), dtype=np.int32)
-        for i in range(3):
-            triangle[0][i] = points[faces[face][0]][i]
-        for point in range(2, faces.shape[1]):
-            if faces[face][point] < 0:
-                break
+        if 0 < points[faces[face][0]][2] <= depth:
+            color = uint32(random() * 1000000)
+            triangle = np.empty((3, 3), dtype=np.int32)
             for i in range(3):
-                triangle[1][i] = points[faces[face][point - 1]][i]
-                triangle[2][i] = points[faces[face][point]][i]
-            if triangle[0][2] > 0 and triangle[1][2] > 0 and triangle[2][2] > 0 and triangle[0][2] <= depth \
-                    and triangle[1][2] <= depth and triangle[2][2] <= depth:
-                drawTriangle(screenSize, surface, triangle, color, zbuffer)
+                triangle[0][i] = points[faces[face][0]][i]
+            for point in range(2, faces.shape[1]):
+                if faces[face][point] < 0:
+                    break
+                for i in range(3):
+                    triangle[1][i] = points[faces[face][point - 1]][i]
+                    triangle[2][i] = points[faces[face][point]][i]
+                if 0 < triangle[1][2] <= depth and 0 < triangle[2][2] <= depth:
+                    drawTriangle(screenSize, surface, triangle, color, zbuffer)
 
 
 def drawPolysGPU(screenSize, surface, points, faces, zbuffer, depth):
     for face in range(faces.shape[0]):
-        color = uint32(random() * 1000000)
-        triangle = np.empty((3, 3), dtype=np.int32)
-        for i in range(3):
-            triangle[0][i] = points[faces[face][0]][i]
-        for point in range(2, faces.shape[1]):
-            if faces[face][point] < 0:
-                break
+        if 0 < points[faces[face][0]][2] <= depth:
+            color = uint32(random() * 1000000)
+            triangle = np.empty((3, 3), dtype=np.int32)
             for i in range(3):
-                triangle[1][i] = points[faces[face][point - 1]][i]
-                triangle[2][i] = points[faces[face][point]][i]
-            if triangle[0][2] > 0 and triangle[1][2] > 0 and triangle[2][2] > 0 and triangle[0][2] <= depth \
-                    and triangle[1][2] <= depth and triangle[2][2] <= depth:
-                drawTriangleGPU(screenSize, surface, triangle, color, zbuffer)
+                triangle[0][i] = points[faces[face][0]][i]
+            for point in range(2, faces.shape[1]):
+                if faces[face][point] < 0:
+                    break
+                for i in range(3):
+                    triangle[1][i] = points[faces[face][point - 1]][i]
+                    triangle[2][i] = points[faces[face][point]][i]
+                if 0 < triangle[1][2] <= depth and 0 < triangle[2][2] <= depth:
+                    drawTriangleGPU(screenSize, surface, triangle, color, zbuffer)
 
 # @njit(void(uint64[:], uint64[:, :], float64[:, :], int64, int64, float64[:, :]), parallel=True)
 # def drawTriangles(screenSize, surface, triangles, n, m, zbuffer):
