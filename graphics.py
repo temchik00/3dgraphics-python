@@ -124,7 +124,7 @@ def drawTriangleGPU(screenSize, surface, triangle, color, zbuffer):
         size = boxMax - boxMin
         gdim = (int(size[0] // bdim[0] + (size[0] % bdim[0] > 0)),
                 int(size[1] // bdim[1] + (size[1] % bdim[1] > 0)))
-        drawTriangleInBox(cuda.InOut(surface), cuda.In(triangle), np.uint32(color), cuda.InOut(zbuffer),
+        drawTriangleInBox(surface, cuda.In(triangle), np.uint32(color), cuda.InOut(zbuffer),
                           np.int32(boxMin[0]), np.int32(boxMin[1]), np.int32(boxMax[0]), np.int32(boxMax[1]),
                           np.int32(screenSize[1]), crossZ, block=bdim, grid=gdim)
 
@@ -241,3 +241,43 @@ def clearBuffer(zBuffer, clipDist):
     for i in prange(zBuffer.shape[0]):
         for j in prange(zBuffer.shape[1]):
             zBuffer[i][j] = clipDist
+
+
+mod = SourceModule("""
+__global__ void clearScreenGPUcore(unsigned int *surface, unsigned int colorClear, int sizeX, int sizeY)
+{
+    int idx = threadIdx.x + blockDim.x * blockIdx.x;
+    int idy = threadIdx.y + blockDim.y * blockIdx.y;
+    if (idx < sizeX && idy < sizeY) {
+        surface[idx * sizeY + idy] = colorClear;
+    }
+}
+""")
+clearScreenGPUcore = mod.get_function("clearScreenGPUcore")
+
+
+mod = SourceModule("""
+__global__ void clearBufferGPUcore(float *zBuffer, int clipDist, int sizeX, int sizeY)
+{
+    int idx = threadIdx.x + blockDim.x * blockIdx.x;
+    int idy = threadIdx.y + blockDim.y * blockIdx.y;
+    if (idx < sizeX && idy < sizeY) {
+        zBuffer[idx * sizeY + idy] = clipDist;
+    }
+}
+""")
+clearBufferGPUcore = mod.get_function("clearBufferGPUcore")
+
+
+def clearScreenGPU(screen, colorHex, screenSize):
+    gdim = (int(screenSize[0] // bdim[0] + (screenSize[0] % bdim[0] > 0)),
+            int(screenSize[1] // bdim[1] + (screenSize[1] % bdim[1] > 0)))
+    clearScreenGPUcore(screen, np.uint32(colorHex), np.int32(screenSize[0]),
+                       np.int32(screenSize[1]), block=bdim, grid=gdim)
+
+
+def clearBufferGPU(zBuffer, clipDist, screenSize):
+    gdim = (int(screenSize[0] // bdim[0] + (screenSize[0] % bdim[0] > 0)),
+            int(screenSize[1] // bdim[1] + (screenSize[1] % bdim[1] > 0)))
+    clearScreenGPUcore(zBuffer, np.int32(clipDist), np.int32(screenSize[0]),
+                       np.int32(screenSize[1]), block=bdim, grid=gdim)

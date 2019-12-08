@@ -50,10 +50,13 @@ if file is not None:
         return np.add(camPos, Shift)
 
 
+    surface_gpu = cuda.mem_alloc(surfArray.nbytes)
+    cuda.memcpy_htod(surface_gpu, surfArray)
     frameCounter = 0
     timePassed = time()
     while play:
-        clearScreen(surfArray, 16777215)
+        clearScreenGPU(surface_gpu, 16777215, screenSize)
+        #clearBufferGPU(zBuffer_gpu, depth, screenSize)
         clearBuffer(zBuffer, depth)
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
@@ -103,10 +106,9 @@ if file is not None:
 
         # Get points to draw
         triangleMap = transform(cameraPos, points, ang)
-
         # Draw everything
-        drawPolysGPU(screenSize, surfArray, triangleMap, faces, zBuffer, depth)
-
+        drawPolysGPU(screenSize, surface_gpu, triangleMap, faces, zBuffer, depth)
+        cuda.memcpy_dtoh(surfArray, surface_gpu)
         pygame.surfarray.blit_array(screen, surfArray)
         pygame.display.flip()
         frameCounter += 1
