@@ -24,7 +24,7 @@ if file is not None:
 
     pygame.init()
     initScaleMatrix(screenSize, depth)
-    initProjectMatrix(screenSize, 0.1, 40, 80)
+    initProjectMatrix(screenSize, 0.5, 40, 80)
     initShiftMatrix(screenSize)
     initGdim(screenSize)
     screen = pygame.display.set_mode(screenSize, pygame.DOUBLEBUF | pygame.FULLSCREEN)
