@@ -1,6 +1,8 @@
 import numpy as np
 import pygame
-from graphics import *
+from numba import njit, float64
+#from graphics import *
+from graphicsGPU import *
 #from landscape import *
 from mathematics import initScaleMatrix, transform, initProjectMatrix, initShiftMatrix
 from time import time
@@ -16,7 +18,7 @@ if file is not None:
     cameraPos = np.array([0.0, 0.0, -15.0], dtype=np.float64)
     screenSize = np.array((1920, 1080), dtype=np.uint64)
     surfArray = np.full(screenSize, 16777215, dtype=np.uint32)
-    zBuffer = np.full(screenSize, 16777215,  dtype=np.float32)
+    zBuffer = np.full(screenSize, depth,  dtype=np.float32)
     shift = np.empty(3, dtype=np.float64)
 
 
@@ -24,6 +26,7 @@ if file is not None:
     initScaleMatrix(screenSize, depth)
     initProjectMatrix(screenSize, 0.1, 40, 80)
     initShiftMatrix(screenSize)
+    initGdim(screenSize)
     screen = pygame.display.set_mode(screenSize, pygame.DOUBLEBUF | pygame.FULLSCREEN)
     screen.unlock()
     clock = pygame.time.Clock()
@@ -52,12 +55,14 @@ if file is not None:
 
     surface_gpu = cuda.mem_alloc(surfArray.nbytes)
     cuda.memcpy_htod(surface_gpu, surfArray)
+
+    zBuffer_gpu = cuda.mem_alloc(zBuffer.nbytes)
+    cuda.memcpy_htod(zBuffer_gpu, zBuffer)
     frameCounter = 0
     timePassed = time()
     while play:
         clearScreenGPU(surface_gpu, 16777215, screenSize)
-        #clearBufferGPU(zBuffer_gpu, depth, screenSize)
-        clearBuffer(zBuffer, depth)
+        clearBufferGPU(zBuffer_gpu, depth, screenSize)
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
                 play = False
@@ -107,7 +112,7 @@ if file is not None:
         # Get points to draw
         triangleMap = transform(cameraPos, points, ang)
         # Draw everything
-        drawPolysGPU(screenSize, surface_gpu, triangleMap, faces, zBuffer, depth)
+        drawPolysGPU(screenSize, surface_gpu, triangleMap, faces, zBuffer_gpu, depth)
         cuda.memcpy_dtoh(surfArray, surface_gpu)
         pygame.surfarray.blit_array(screen, surfArray)
         pygame.display.flip()
