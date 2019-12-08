@@ -14,8 +14,9 @@ def readFromFile(filePath):
             parts = line.split(" ")
             if parts[0] == "v":
                 tmp = []
-                for i in range(1, len(parts)):
-                    tmp.append(float(parts[i]))
+                tmp.append(float(parts[1]))
+                tmp.append(float(parts[2]) * -1)
+                tmp.append(float(parts[3]))
                 vertTmp.append(tmp)
             elif parts[0] == "vn":
                 tmp = []
@@ -25,8 +26,8 @@ def readFromFile(filePath):
             elif parts[0] == "f":
                 coords = []
                 for i in range(1, len(parts)):
-                    tmp = parts[i].split("//")
-                    coords.append(int(tmp[0]))
+                    tmp = parts[i].split("/")
+                    coords.append(int(tmp[0])-1)
                 maxPointPoly = len(coords) if len(coords) > maxPointPoly else maxPointPoly
                 facesTmp.append(coords)
         f.close()

@@ -90,6 +90,8 @@ def drawTriangleGPU(screenSize, surface, triangle, color, zbuffer):
         if boxMax[1] < 0:
             return
         size = boxMax - boxMin
+        if size[0] == 0 or size[1] == 0:
+            return
         gdim = (int(size[0] // bdim[0] + (size[0] % bdim[0] > 0)),
                 int(size[1] // bdim[1] + (size[1] % bdim[1] > 0)))
         drawTriangleInBox(surface, cuda.In(triangle), np.uint32(color), zbuffer,
