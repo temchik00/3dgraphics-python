@@ -8,12 +8,16 @@ shift = np.eye(4, dtype=np.float64)
 matrix = np.eye(4, dtype=np.float64)
 
 
+# Initialize ShiftMatrix
 def initShiftMatrix(screenSize):
+    global shift
     shift[0][3] = screenSize[0] / 2
     shift[1][3] = screenSize[1] / 2
 
 
+# Initialize ProjectMatrix
 def initProjectMatrix(screenSize, nearClipPlane, farClipPlane, fov):
+    global projectMatrix
     aspect = screenSize[0] / screenSize[1]
     fov = np.radians(fov)
     a = farClipPlane / (farClipPlane - nearClipPlane)
@@ -26,20 +30,24 @@ def initProjectMatrix(screenSize, nearClipPlane, farClipPlane, fov):
     projectMatrix[3][2] = 1
 
 
+# Initialize ScaleMatrix
 def initScaleMatrix(screenSize, depth):
+    global scaleMatrix
     scaleMatrix[0][0] = screenSize[0] / 2
     scaleMatrix[1][1] = screenSize[1] / 2
     scaleMatrix[2][2] = depth - 1
 
 
+# Translates object from global coords into screen coords
 def transform(cameraPos, objectDots, angle):
+    global matrix
     # change position
     matrix[0][3] = -1 * cameraPos[0]
     matrix[1][3] = -1 * cameraPos[1]
     matrix[2][3] = -1 * cameraPos[2]
     res = np.dot(matrix, objectDots)
 
-    ## rotation ##
+    # ROTATION
     # left/right
     rotateY = np.eye(4, dtype=np.float64)
     rotateY[0][0] = np.cos(angle[0])
@@ -74,7 +82,8 @@ def shiftImage(objectDots):
     for point in prange(objectDots.shape[1]):
         for coord in range(3):
             if objectDots[3][point] > 0.05:
-                objectDots[coord][point] = round(objectDots[coord][point] / objectDots[3][point])
+                objectDots[coord][point] =\
+                    round(objectDots[coord][point] / objectDots[3][point])
             else:
                 objectDots[coord][point] = -10000
         objectDots[3][point] = 1

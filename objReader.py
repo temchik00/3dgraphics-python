@@ -4,6 +4,8 @@ import sys
 from PyQt5 import QtWidgets
 import mainMenuUI
 
+
+# Reading object information from file
 def readFromFile(filePath):
     vertTmp = []
     normalsTmp = []
@@ -28,7 +30,8 @@ def readFromFile(filePath):
                 for i in range(1, len(parts)):
                     tmp = parts[i].split("/")
                     coords.append(int(tmp[0])-1)
-                maxPointPoly = len(coords) if len(coords) > maxPointPoly else maxPointPoly
+                maxPointPoly = len(coords) if len(coords) > maxPointPoly\
+                    else maxPointPoly
                 facesTmp.append(coords)
         f.close()
     vertices = np.full((4, len(vertTmp)), 1, dtype=np.float32)
@@ -42,6 +45,7 @@ def readFromFile(filePath):
     return vertices, faces
 
 
+# Main menu
 class Menu(QtWidgets.QMainWindow, mainMenuUI.Ui_MainWindow):
     def __init__(self):
         super().__init__()
@@ -51,16 +55,20 @@ class Menu(QtWidgets.QMainWindow, mainMenuUI.Ui_MainWindow):
         self.file = None
         self.tmp = None
 
+    # Opening file dialog for choosing file
     def openFileDialog(self):
-        name = QtWidgets.QFileDialog.getOpenFileName(self, "Open file", '', "Object files (*.obj)")[0]
+        name = QtWidgets.QFileDialog.getOpenFileName(self, "Open file", '',
+                                                     "Object files (*.obj)")[0]
         self.fileNameShow.setText("File name: " + name)
         self.tmp = name
 
+    # Exiting main menu
     def quit(self):
         self.file = self.tmp
         self.close()
 
 
+# Showing main menu
 def showMenu():
     app = QtWidgets.QApplication(sys.argv)
     window = Menu()

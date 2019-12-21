@@ -1,5 +1,7 @@
+import numpy as np
 import pygame
-from graphics import *
+from numba import njit, float64
+from graphicsGPU import *
 from mathematics import initScaleMatrix, transform,\
     initProjectMatrix, initShiftMatrix
 from time import time
@@ -25,6 +27,7 @@ if file is not None:
     initScaleMatrix(screenSize, depth)
     initProjectMatrix(screenSize, 0.5, 40, 80)
     initShiftMatrix(screenSize)
+    initGdim(screenSize)
     screen = pygame.display.set_mode(screenSize,
                                      pygame.DOUBLEBUF | pygame.FULLSCREEN)
     screen.unlock()
@@ -51,14 +54,20 @@ if file is not None:
         # Applying shift
         return np.add(camPos, Shift)
 
+    # Transferring data into device
+    surface_gpu = cuda.mem_alloc(surfArray.nbytes)
+    cuda.memcpy_htod(surface_gpu, surfArray)
+    zBuffer_gpu = cuda.mem_alloc(zBuffer.nbytes)
+    cuda.memcpy_htod(zBuffer_gpu, zBuffer)
+
     # Timing
     timePassed = time()
 
     # Render's main loop
     while play:
         # Clearing things
-        clearScreen(surfArray, 16777215)
-        clearBuffer(zBuffer, depth)
+        clearScreenGPU(surface_gpu, 16777215, screenSize)
+        clearBufferGPU(zBuffer_gpu, depth, screenSize)
 
         # Implementing application closure
         for ev in pygame.event.get():
@@ -111,9 +120,11 @@ if file is not None:
         # Get points to draw
         triangleMap = transform(cameraPos, points, ang)
         # Draw everything
-        drawPolys(screenSize, surfArray, triangleMap,
-                     faces, zBuffer, depth)
+        drawPolysGPU(screenSize, surface_gpu, triangleMap,
+                     faces, zBuffer_gpu, depth)
 
+        # Copy data from device
+        cuda.memcpy_dtoh(surfArray, surface_gpu)
         pygame.surfarray.blit_array(screen, surfArray)
         pygame.display.flip()
         frameCounter += 1

@@ -8,38 +8,48 @@ bdim = (8, 8, 1)
 gdim_fullscreen = (0, 0, 0)
 
 
+# Initialize gridDim for operations with whole screen
 def initGdim(screenSize):
     global gdim_fullscreen
-    gdim_fullscreen = (int(screenSize[0] // bdim[0] + (screenSize[0] % bdim[0] > 0)),
-                       int(screenSize[1] // bdim[1] + (screenSize[1] % bdim[1] > 0)))
+    gdim_fullscreen = \
+        (int(screenSize[0] // bdim[0] + (screenSize[0] % bdim[0] > 0)),
+         int(screenSize[1] // bdim[1] + (screenSize[1] % bdim[1] > 0)))
 
 
 mod = SourceModule("""
-__global__ void triangleInBox(unsigned int *surface, int *triangle, unsigned int color, float *zbuffer, int xStart, int yStart, int xEnd, int yEnd, int height, float cross2)
+// Kernel for drawing triangle inside bounding box
+__global__ void triangleInBox(unsigned int *surface, int *triangle,
+unsigned int color, float *zbuffer, int xStart, int yStart,
+int xEnd, int yEnd, int height, float cross2)
 {
     int idx = threadIdx.x + blockDim.x * blockIdx.x + xStart;
     int idy = threadIdx.y + blockDim.y * blockIdx.y + yStart;
     if (idx < xEnd && idy < yEnd) {
-        float cross0 = (triangle[3] - triangle[0]) * (triangle[1] - idy) - (triangle[4] - triangle[1]) * (triangle[0] - idx);
-        float cross1 = -1.0 * ((triangle[6] - triangle[0]) * (triangle[1] - idy) - (triangle[7] - triangle[1]) * (triangle[0] - idx));
-        int id = idx * height + idy;    
+        float cross0 = (triangle[3] - triangle[0]) * (triangle[1] - idy) -
+        (triangle[4] - triangle[1]) * (triangle[0] - idx);
+        float cross1 =
+        -1.0 * ((triangle[6] - triangle[0]) * (triangle[1] - idy) -
+        (triangle[7] - triangle[1]) * (triangle[0] - idx));
+        int id = idx * height + idy;
         float u0 = 1.0 - (cross0 + cross1) / cross2;
         float u1 = cross1 / cross2;
         float u2 = cross0 / cross2;
-        if(u0 >= 0.0 && u1 >= 0.0 && u2 >= 0.0) 
+        if(u0 >= 0.0 && u1 >= 0.0 && u2 >= 0.0)
         {
             float z = triangle[2] * u0 + triangle[5] * u1 + triangle[8] * u2;
             if(z < zbuffer[id])
             {
                 zbuffer[id] = z;
-                surface[id] = color;   
+                surface[id] = color;
             }
         }
     }
 }
 
 
-__global__ void clearScreenGPUcore(unsigned int *surface, unsigned int colorClear, int sizeX, int sizeY)
+// Kernel for clearing screen
+__global__ void clearScreenGPUcore(unsigned int *surface,
+unsigned int colorClear, int sizeX, int sizeY)
 {
     int idx = threadIdx.x + blockDim.x * blockIdx.x;
     int idy = threadIdx.y + blockDim.y * blockIdx.y;
@@ -49,7 +59,9 @@ __global__ void clearScreenGPUcore(unsigned int *surface, unsigned int colorClea
 }
 
 
-__global__ void clearBufferGPUcore(float *zBuffer, int clipDist, int sizeX, int sizeY)
+// Kernel for clearing z-buffer
+__global__ void clearBufferGPUcore(float *zBuffer,
+int clipDist, int sizeX, int sizeY)
 {
     int idx = threadIdx.x + blockDim.x * blockIdx.x;
     int idy = threadIdx.y + blockDim.y * blockIdx.y;
@@ -63,9 +75,13 @@ clearScreenGPUcore = mod.get_function("clearScreenGPUcore")
 clearBufferGPUcore = mod.get_function("clearBufferGPUcore")
 
 
+# Drawing triangle using barycentric coordinates
 def drawTriangleGPU(screenSize, surface, triangle, color, zbuffer):
-    crossZ = np.float32((triangle[2][0] - triangle[0][0]) * (triangle[1][1] - triangle[0][1])
-                        - (triangle[1][0] - triangle[0][0]) * (triangle[2][1] - triangle[0][1]))
+    crossZ = \
+        np.float32((triangle[2][0] - triangle[0][0]) *
+                   (triangle[1][1] - triangle[0][1]) -
+                   (triangle[1][0] - triangle[0][0]) *
+                   (triangle[2][1] - triangle[0][1]))
     if crossZ != 0:
         boxMin = np.empty(2, dtype=np.int32)
         boxMax = np.empty(2, dtype=np.int32)
@@ -94,11 +110,15 @@ def drawTriangleGPU(screenSize, surface, triangle, color, zbuffer):
             return
         gdim = (int(size[0] // bdim[0] + (size[0] % bdim[0] > 0)),
                 int(size[1] // bdim[1] + (size[1] % bdim[1] > 0)))
-        drawTriangleInBox(surface, cuda.In(triangle), np.uint32(color), zbuffer,
-                          np.int32(boxMin[0]), np.int32(boxMin[1]), np.int32(boxMax[0]), np.int32(boxMax[1]),
-                          np.int32(screenSize[1]), crossZ, block=bdim, grid=gdim)
+        drawTriangleInBox(surface, cuda.In(triangle),
+                          np.uint32(color), zbuffer,
+                          np.int32(boxMin[0]), np.int32(boxMin[1]),
+                          np.int32(boxMax[0]), np.int32(boxMax[1]),
+                          np.int32(screenSize[1]), crossZ,
+                          block=bdim, grid=gdim)
 
 
+# Drawing polygons using GPU
 def drawPolysGPU(screenSize, surface, points, faces, zbuffer, depth):
     for face in range(faces.shape[0]):
         if 0 < points[faces[face][0]][2] <= depth:
@@ -113,14 +133,19 @@ def drawPolysGPU(screenSize, surface, points, faces, zbuffer, depth):
                     triangle[1][i] = points[faces[face][point - 1]][i]
                     triangle[2][i] = points[faces[face][point]][i]
                 if 0 < triangle[1][2] <= depth and 0 < triangle[2][2] <= depth:
-                    drawTriangleGPU(screenSize, surface, triangle, color, zbuffer)
+                    drawTriangleGPU(screenSize, surface,
+                                    triangle, color, zbuffer)
 
 
+# Clearing screen using GPU
 def clearScreenGPU(screen, colorHex, screenSize):
-    clearScreenGPUcore(screen, np.uint32(colorHex), np.int32(screenSize[0]),
-                       np.int32(screenSize[1]), block=bdim, grid=gdim_fullscreen)
+    clearScreenGPUcore(screen, np.uint32(colorHex),
+                       np.int32(screenSize[0]), np.int32(screenSize[1]),
+                       block=bdim, grid=gdim_fullscreen)
 
 
+# Clearing z-buffer using GPU
 def clearBufferGPU(zBuffer, clipDist, screenSize):
-    clearBufferGPUcore(zBuffer, np.int32(clipDist), np.int32(screenSize[0]),
-                       np.int32(screenSize[1]), block=bdim, grid=gdim_fullscreen)
+    clearBufferGPUcore(zBuffer, np.int32(clipDist),
+                       np.int32(screenSize[0]), np.int32(screenSize[1]),
+                       block=bdim, grid=gdim_fullscreen)

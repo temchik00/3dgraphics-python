@@ -1,8 +1,10 @@
-from numba import jit, uint64, void, int64, njit, prange, float64, float32, int32, uint32
+from numba import jit, uint64, void, int64,\
+    njit, prange, float64, float32, int32, uint32
 import numpy as np
 from random import random
 
 
+# Translate rgb into hexadecimal
 @jit(uint64(uint64, uint64, uint64), nopython=True)
 def rgbToHexDecimal(r, g, b):
     res = 0
@@ -18,17 +20,23 @@ def rgbToHexDecimal(r, g, b):
     return res
 
 
+# Calculating barycentric coordinates
 @jit(float32[:](int32[:, :], int32, int32), nopython=True)
 def barycentric(triangle, x, y):
     u = np.cross(
-        np.asarray((triangle[2][0] - triangle[0][0], triangle[1][0] - triangle[0][0], triangle[0][0] - x)),
-        np.asarray((triangle[2][1] - triangle[0][1], triangle[1][1] - triangle[0][1], triangle[0][1] - y)))
+        np.asarray((triangle[2][0] - triangle[0][0],
+                    triangle[1][0] - triangle[0][0], triangle[0][0] - x)),
+        np.asarray((triangle[2][1] - triangle[0][1],
+                    triangle[1][1] - triangle[0][1], triangle[0][1] - y)))
     if u[2] == 0:
         return np.asarray((-1, 1, 1), dtype=float32)
-    return np.asarray((1.0 - (u[0] + u[1]) / u[2], u[1] / u[2], u[0] / u[2]), dtype=float32)
+    return np.asarray((1.0 - (u[0] + u[1]) / u[2], u[1] / u[2], u[0] / u[2]),
+                      dtype=float32)
 
 
-@njit(void(uint64[:], uint32[:, :], int32[:, :], uint32, float32[:, :]), parallel=True)
+# Drawing triangle
+@njit(void(uint64[:], uint32[:, :], int32[:, :], uint32, float32[:, :]),
+      parallel=True)
 def drawTriangle(screenSize, surface, triangle, color, zbuffer):
     boxMin = np.empty(2, dtype=np.int64)
     boxMax = np.empty(2, dtype=np.int64)
@@ -56,13 +64,16 @@ def drawTriangle(screenSize, surface, triangle, color, zbuffer):
     for x in prange(boxMin[0], boxMax[0]+1):
         for y in prange(boxMin[1], boxMax[1] + 1):
             u = barycentric(triangle, x, y)
-            z = triangle[0][2] * u[0] + triangle[1][2] * u[1] + triangle[2][2] * u[2]
+            z = triangle[0][2] * u[0] + triangle[1][2] * u[1] +\
+                triangle[2][2] * u[2]
             if u[0] >= 0 and z < zbuffer[x][y] and u[1] >= 0 and u[2] >= 0:
                 zbuffer[x][y] = z
                 surface[x][y] = color
 
 
-@njit(void(uint64[:], uint32[:, :], float32[:, :], int64[:, :], float32[:, :], float64))
+# Drawing all polygons
+@njit(void(uint64[:], uint32[:, :], float32[:, :],
+           int64[:, :], float32[:, :], float64))
 def drawPolys(screenSize, surface, points, faces, zbuffer, depth):
     for face in range(faces.shape[0]):
         if 0 < points[faces[face][0]][2] <= depth:
@@ -80,6 +91,7 @@ def drawPolys(screenSize, surface, points, faces, zbuffer, depth):
                     drawTriangle(screenSize, surface, triangle, color, zbuffer)
 
 
+# Clearing screen
 @njit(void(uint32[:, :], uint32), parallel=True)
 def clearScreen(screen, colorHex):
     for i in prange(screen.shape[0]):
@@ -87,6 +99,7 @@ def clearScreen(screen, colorHex):
             screen[i][j] = colorHex
 
 
+# Clearing z-buffer
 @njit(void(float32[:, :], float32), parallel=True)
 def clearBuffer(zBuffer, clipDist):
     for i in prange(zBuffer.shape[0]):
